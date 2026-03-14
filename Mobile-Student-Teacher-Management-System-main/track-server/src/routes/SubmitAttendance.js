@@ -10,11 +10,26 @@ router.use(requireAuth);
 
 router.post('/submit-attendance', async (req, res) => {
   try {
-    const { latitude, longitude } = req.body.currentLocation;
+    const { currentLocation } = req.body;
+    if (!currentLocation || typeof currentLocation !== 'object') {
+      throw new Error('Valid current location is required');
+    }
+    const { latitude, longitude } = currentLocation;
     const {moduleName, moduleCode,venue, startTime,sessionId} = req.body;
-    // Check if latitude and longitude are valid (add your own validation logic)
-    if (!latitude || !longitude) {
-      throw new Error('Latitude and longitude are required');
+    
+    // Check if latitude and longitude are valid
+    if (latitude === undefined || longitude === undefined) {
+      throw new Error('Latitude and longitude are required within currentLocation');
+    }
+
+    // Check if the student has already submitted attendance for this session
+    const existingAttendance = await Attendance.findOne({ 
+      studentId: req.user.regNum, 
+      sessionId: sessionId 
+    });
+
+    if (existingAttendance) {
+      return res.status(422).send({ error: 'Attendance already marked for this session' });
     }
 
     // Create a new attendance record

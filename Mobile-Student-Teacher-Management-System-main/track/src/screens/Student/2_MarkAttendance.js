@@ -22,6 +22,8 @@ const reducer = (state, action) => {
   }
 };
 
+import { SafeAreaView } from 'react-native-safe-area-context';
+
 const MarkAttendance = ({ navigation }) => {
   const [state, dispatch] = useReducer(reducer, initialState);
   const inputRef = useRef(null);
@@ -51,14 +53,12 @@ const MarkAttendance = ({ navigation }) => {
     try {
       const response = await trackerApi.post('/session-details/code', { code });
       dispatch({ type: 'clearErrorMessage' });
-      // Check if session exists in the response
       if (response.data && response.data.session) {
-        const data=response.data;
-        navigation.navigate('TrackCreateScreen', {data});
+        const data = response.data;
+        navigation.navigate('TrackCreateScreen', { data });
         return response.data;
       } else {
-        // Handle missing session (e.g., set error message)
-        throw new Error('Invalid attendance code'); // Or dispatch an error action
+        throw new Error('Invalid attendance code');
       }
     } catch (error) {
       dispatch({ type: 'setErrorMessage', payload: 'Invalid attendance code. Please try again.' });
@@ -69,7 +69,6 @@ const MarkAttendance = ({ navigation }) => {
     try {
       const response = await trackerApi.get('/attendance-history');
       const attendanceHistory = response.data;
-      console.log("dddd",attendanceHistory);
       navigation.navigate('AttendanceHistoryScreen', { attendanceHistory });
     } catch (error) {
       console.error('Error fetching attendance history:', error.message);
@@ -78,147 +77,181 @@ const MarkAttendance = ({ navigation }) => {
 
   return (
     <ImageBackground source={require('../../../assets/them.jpg')} style={styles.backgroundImage}>
-    <ScrollView contentContainerStyle={styles.scrollViewContainer}>
-      <View style={styles.innerContainer}>
-          <Spacer>
-            <Text h1 style={styles.heading}>
-              Let's Mark Your Attendance
-            </Text>
-          </Spacer>
-
-          <Spacer>
-            <Text style={styles.text}>Enter the code below:</Text>
-          </Spacer>
-
-          <TouchableOpacity style={styles.inputContainer} onPress={handleBoxPress}>
-            <TextInput
-              value={state.attendanceCode}
-              onChangeText={handleChangeText}
-              maxLength={4}
-              keyboardType="numeric"
-              style={styles.hiddenInput}
-              ref={inputRef}
-            />
-            <View style={styles.codeContainer}>
-              {Array.from({ length: 4 }).map((_, index) => (
-                <View key={index} style={styles.inputBoxContainer}>
-                  <Text style={styles.inputText}>
-                    {state.attendanceCode[index] || ''}
-                  </Text>
-                </View>
-              ))}
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView contentContainerStyle={styles.scrollViewContainer} keyboardShouldPersistTaps="handled">
+          <View style={styles.innerContainer}>
+            <View style={styles.header}>
+              <Text h1 style={styles.heading}>Check-In</Text>
+              <Text style={styles.subHeading}>Enter the 4-digit session code</Text>
             </View>
-          </TouchableOpacity>
 
-          {state.errorMessage && (
-            <Spacer>
-              <Text style={styles.errorText}>{state.errorMessage}</Text>
-            </Spacer>
-          )}
-
-          <Spacer>
-            <Image
-              source={require('../../../assets/mark_attendance.png')}
-              style={styles.image}
-              resizeMode="contain"
-            />
-          </Spacer>
-
-          
-          <Spacer>
-            <Button
-              title="Mark Attendance"
-              buttonStyle={styles.markButton}
-              onPress={handleMarkAttendance}
-            />
-          </Spacer>
-          <Spacer>
-            <TouchableOpacity onPress={handleMarkAttendanceHistory}>
-              <Text style={styles.linkText}>Mark Attendance History</Text>
+            <TouchableOpacity style={styles.inputWrapper} onPress={handleBoxPress} activeOpacity={1}>
+              <TextInput
+                value={state.attendanceCode}
+                onChangeText={handleChangeText}
+                maxLength={4}
+                keyboardType="numeric"
+                style={styles.hiddenInput}
+                ref={inputRef}
+                caretHidden={true}
+              />
+              <View style={styles.codeContainer}>
+                {Array.from({ length: 4 }).map((_, index) => (
+                  <View key={index} style={[
+                    styles.inputBox,
+                    state.attendanceCode.length === index && styles.activeInputBox
+                  ]}>
+                    <Text style={styles.inputText}>
+                      {state.attendanceCode[index] || ''}
+                    </Text>
+                  </View>
+                ))}
+              </View>
             </TouchableOpacity>
-          </Spacer>
-        </View>
-      </ScrollView>
+
+            {state.errorMessage && (
+              <Text style={styles.errorText}>{state.errorMessage}</Text>
+            )}
+
+            <View style={styles.imageContainer}>
+              <Image
+                source={require('../../../assets/mark_attendance.png')}
+                style={styles.illustration}
+                resizeMode="contain"
+              />
+            </View>
+
+            <View style={styles.buttonContainer}>
+              <Button
+                title="Verify Code"
+                buttonStyle={styles.markButton}
+                titleStyle={styles.markButtonTitle}
+                onPress={handleMarkAttendance}
+                disabled={state.attendanceCode.length < 4}
+              />
+              
+              <TouchableOpacity onPress={handleMarkAttendanceHistory} style={styles.historyLink}>
+                <Text style={styles.linkText}>View Attendance History</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  innerContainer: {
+  backgroundImage: {
     flex: 1,
+    resizeMode: 'cover',
+  },
+  safeArea: {
+    flex: 1,
+  },
+  scrollViewContainer: {
+    flexGrow: 1,
     justifyContent: 'center',
-    padding: 10,
+    padding: 20,
   },
-  backgroundImage:{
-    flex: 1, // Make the background image cover the entire viewport
-    resizeMode: 'cover', // Stretch the image to fill the container
+  innerContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    borderRadius: 30,
+    padding: 30,
+    elevation: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 20,
   },
-  scrollViewContainer:{
-    alignItems: 'center', // Center elements horizontally
-    paddingTop: 120, // Add some bottom padding
+  header: {
+    alignItems: 'center',
+    marginBottom: 40,
   },
   heading: {
-    textAlign: 'center',
-    marginBottom: 20,
-    fontWeight: 'bold',
-    color: '#3498db',
-  },
-  image: {
-    height: 100,
-    width: '100%',
-    borderRadius: 10,
-  },
-  text: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#484BF1',
     textAlign: 'center',
   },
-  inputContainer: {
-    flexDirection: 'column',
+  subHeading: {
+    fontSize: 16,
+    color: '#718096',
+    textAlign: 'center',
+    marginTop: 8,
+    fontWeight: '500',
+  },
+  inputWrapper: {
     alignItems: 'center',
-    marginTop: 10,
+    marginBottom: 30,
   },
   hiddenInput: {
     position: 'absolute',
-    top: -40, // Position the input off-screen
-    left: 0,
-    width: '100%',
-    height: 40,
-    opacity: 0, // Keep it off-screen and hidden
+    width: 0,
+    height: 0,
+    opacity: 0,
   },
   codeContainer: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    justifyContent: 'center',
   },
-  inputBoxContainer: {
-    width: 50,
-    height: 50,
-    marginHorizontal: 5,
+  inputBox: {
+    width: 60,
+    height: 65,
+    marginHorizontal: 8,
     borderWidth: 2,
-    borderRadius: 10,
-    borderColor: '#3498db',
+    borderRadius: 15,
+    borderColor: '#E2E8F0',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  activeInputBox: {
+    borderColor: '#484BF1',
+    backgroundColor: '#F7FAFC',
   },
   inputText: {
-    fontSize: 24,
-    color: '#2c3e50',
-    textAlign: 'center',
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#2D3748',
   },
   errorText: {
-    color: 'red',
+    color: '#E53E3E',
     textAlign: 'center',
-    marginTop: 10,
+    marginBottom: 20,
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  imageContainer: {
+    alignItems: 'center',
+    marginBottom: 40,
+  },
+  illustration: {
+    height: 120,
+    width: '100%',
+  },
+  buttonContainer: {
+    gap: 15,
   },
   markButton: {
-    backgroundColor: '#3498db',
-    borderRadius: 10,
+    backgroundColor: '#484BF1',
+    borderRadius: 15,
+    paddingVertical: 15,
+    elevation: 5,
+  },
+  markButtonTitle: {
+    fontWeight: '700',
+    fontSize: 18,
+  },
+  historyLink: {
+    marginTop: 10,
+    alignItems: 'center',
   },
   linkText: {
-    textAlign: 'center',
-    color: 'blue',
-    fontWeight: 'bold',
-    fontSize: 15,
+    color: '#484BF1',
+    fontWeight: '700',
+    fontSize: 16,
+    textDecorationLine: 'underline',
   },
 });
 

@@ -1,115 +1,123 @@
-import React, { useMemo, useRef, useCallback } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
-import { Agenda } from 'react-native-calendars';
+import React, { useMemo, useRef } from 'react';
+import { View, Text, StyleSheet, SectionList, TouchableOpacity } from 'react-native';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { format, parseISO, isToday, isFuture } from 'date-fns';
 
 const TimetableScreen_V3 = ({ route }) => {
-  const renderCount = useRef(0);
-  renderCount.current += 1;
-  
   const { params } = route || {};
   const { data } = params || {};
 
-  // useMemo derived data is safer than setState/useEffect for processed props
-  const events = useMemo(() => {
+  // 1. Process Raw Data into Grouped Events (Recurrence Logic)
+  const groupedEvents = useMemo(() => {
     if (!data || !Array.isArray(data.timetable)) {
       return {};
     }
     
-    const newEvents = {};
-    data.timetable.forEach((event) => {
-      if (!event.startDate || !event.endDate) return;
+    const eventsMap = {};
+    data.timetable.forEach((session) => {
+      if (!session.startDate || !session.endDate) return;
 
-      const currentDate = new Date(event.startDate);
-      const endDate = new Date(event.endDate);
+      let currentDate = new Date(session.startDate);
+      const endDate = new Date(session.endDate);
 
-      // Safety check for invalid dates
       if (isNaN(currentDate.getTime()) || isNaN(endDate.getTime())) return;
 
       let iterations = 0;
-      const MAX_ITERATIONS = 52; // Limit to 1 year of weekly recurrences
+      const MAX_ITERATIONS = 52; // Safety limit: 1 year of weekly sessions
 
       while (currentDate <= endDate && iterations < MAX_ITERATIONS) {
-        const currentDateString = currentDate.toISOString().split('T')[0];
+        const dateKey = currentDate.toISOString().split('T')[0];
 
-        if (!newEvents[currentDateString]) {
-          newEvents[currentDateString] = [];
+        if (!eventsMap[dateKey]) {
+          eventsMap[dateKey] = [];
         }
 
-        newEvents[currentDateString].push({
-          ...event,
-          startDate: currentDateString,
-          endDate: currentDateString,
-          key: `${event._id || event.code}_${currentDateString}` // Add a unique key
+        eventsMap[dateKey].push({
+          ...session,
+          displayDate: dateKey,
+          id: `${session._id || session.code}_${dateKey}`
         });
 
-        // Increment date by 7 days
+        // Weekly recurrence
         currentDate.setDate(currentDate.getDate() + 7);
         iterations++;
       }
     });
 
-    return newEvents;
+    return eventsMap;
   }, [data]);
 
-  // Stable props for Agenda to prevent internal re-renders
-  const theme = useMemo(() => ({
-    agendaKnobColor: '#484BF1',
-    selectedDayBackgroundColor: '#484BF1',
-    todayTextColor: '#484BF1',
-    dotColor: '#484BF1',
-  }), []);
+  // 2. Format for SectionList: [{ title: '2026-03-13', data: [...] }]
+  const sections = useMemo(() => {
+    return Object.keys(groupedEvents)
+      .sort()
+      .map(date => {
+        const parsedDate = parseISO(date);
+        let title = format(parsedDate, 'EEEE, MMM do');
+        if (isToday(parsedDate)) title = `Today - ${title}`;
 
-  const renderEmptyDate = useCallback(() => <View />, []);
+        return {
+          title,
+          dateKey: date,
+          data: groupedEvents[date].sort((a, b) => a.startTime.localeCompare(b.startTime))
+        };
+      });
+  }, [groupedEvents]);
 
-  const renderItem = useCallback((item) => (
-    <View style={styles.eventContainer}>
-      <Text style={styles.eventName}>{item.name}</Text>
-      <Text style={styles.eventCode}>{item.code}</Text>
-      <View style={styles.detailRow}>
-        <Icon name="map-marker" size={14} color="#828282" />
-        <Text style={styles.eventDetails}> {item.venue}</Text>
-      </View>
-      <View style={styles.detailRow}>
-        <Icon name="clock-outline" size={14} color="#828282" />
-        <Text style={styles.eventDetails}> {item.startTime} - {item.endTime}</Text>
+  // 3. Renderers
+  const renderItem = ({ item }) => (
+    <View style={styles.card}>
+      <View style={[styles.statusIndicator, isFuture(parseISO(item.displayDate)) ? styles.future : styles.past]} />
+      <View style={styles.cardContent}>
+        <View style={styles.cardHeader}>
+          <Text style={styles.moduleName}>{item.name}</Text>
+          <View style={styles.codeBadge}>
+            <Text style={styles.codeText}>{item.code}</Text>
+          </View>
+        </View>
+        
+        <View style={styles.detailsGrid}>
+          <View style={styles.detailItem}>
+            <Icon name="clock-outline" size={16} color="#484BF1" />
+            <Text style={styles.detailText}>{item.startTime} - {item.endTime}</Text>
+          </View>
+          <View style={styles.detailItem}>
+            <Icon name="map-marker-outline" size={16} color="#484BF1" />
+            <Text style={styles.detailText}>{item.venue}</Text>
+          </View>
+        </View>
       </View>
     </View>
-  ), []);
+  );
 
-  const selectedDate = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const renderSectionHeader = ({ section: { title } }) => (
+    <View style={styles.sectionHeader}>
+      <Text style={styles.sectionHeaderText}>{title}</Text>
+    </View>
+  );
 
-  if (renderCount.current > 50) {
-    console.warn('CRITICAL: TimetableScreen_V3 reached 50 renders! Stopping to prevent crash.');
+  if (!data || sections.length === 0) {
     return (
-        <View style={{flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff'}}>
-            <Icon name="alert-circle-outline" size={50} color="red" />
-            <Text style={{marginTop: 10, fontSize: 16, fontWeight: 'bold'}}>Rendering safety limit reached.</Text>
-            <Text style={{color: '#666', marginTop: 5}}>There might be a loop in the navigation state.</Text>
-        </View>
+      <View style={styles.emptyContainer}>
+        <Icon name="calendar-blank-outline" size={80} color="#CBD5E0" />
+        <Text style={styles.emptyTitle}>No Sessions Found</Text>
+        <Text style={styles.emptySubtitle}>Your timetable is currently empty for this batch.</Text>
+      </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      <View style={styles.topBar}></View>
-      
-      {(!data || Object.keys(events).length === 0) ? (
-        <View style={styles.emptyContainer}>
-            <Icon name="calendar-blank" size={60} color="#ccc" />
-            <Text style={styles.emptyText}>No sessions found for your batch.</Text>
-        </View>
-      ) : (
-        <Agenda
-          items={events}
-          renderEmptyDate={renderEmptyDate}
-          renderItem={renderItem}
-          theme={theme}
-          pastScrollRange={1}
-          futureScrollRange={3}
-          selected={selectedDate}
-        />
-      )}
+      <View style={styles.topBar} />
+      <SectionList
+        sections={sections}
+        keyExtractor={(item) => item.id}
+        renderItem={renderItem}
+        renderSectionHeader={renderSectionHeader}
+        stickySectionHeadersEnabled={true}
+        contentContainerStyle={styles.listContainer}
+        showsVerticalScrollIndicator={false}
+      />
     </View>
   );
 };
@@ -117,56 +125,115 @@ const TimetableScreen_V3 = ({ route }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F7FAFC',
   },
   topBar: {
     backgroundColor: "#484BF1",
-    width: "100%",
-    height: 18,
+    height: 4,
+    width: '100%',
   },
-  eventContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 15,
-    marginRight: 10,
-    marginTop: 17,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1.41,
+  listContainer: {
+    paddingBottom: 40,
   },
-  eventName: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
+  sectionHeader: {
+    backgroundColor: '#EDF2F7',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
   },
-  eventCode: {
+  sectionHeaderText: {
     fontSize: 14,
-    color: '#666',
-    marginBottom: 5,
+    fontWeight: '700',
+    color: '#4A5568',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
-  detailRow: {
+  card: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginTop: 12,
+    borderRadius: 12,
+    flexDirection: 'row',
+    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    overflow: 'hidden',
+  },
+  statusIndicator: {
+    width: 6,
+  },
+  future: {
+    backgroundColor: '#484BF1',
+  },
+  past: {
+    backgroundColor: '#A0AEC0',
+  },
+  cardContent: {
+    flex: 1,
+    padding: 16,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  moduleName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#2D3748',
+    flex: 1,
+    marginRight: 8,
+  },
+  codeBadge: {
+    backgroundColor: '#EBF4FF',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  codeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#484BF1',
+  },
+  detailsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  detailItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    width: '50%',
+    marginBottom: 4,
   },
-  eventDetails: {
-    fontSize: 13,
-    color: '#828282',
+  detailText: {
+    fontSize: 14,
+    color: '#718096',
+    marginLeft: 6,
   },
   emptyContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingBottom: 100,
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 40,
   },
-  emptyText: {
-    marginTop: 10,
+  emptyTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#2D3748',
+    marginTop: 20,
+  },
+  emptySubtitle: {
     fontSize: 16,
-    color: '#828282',
+    color: '#718096',
     textAlign: 'center',
-  }
+    marginTop: 8,
+    lineHeight: 24,
+  },
 });
 
 export default TimetableScreen_V3;

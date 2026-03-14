@@ -1,7 +1,16 @@
-import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Image, ImageBackground, Alert } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React from "react";
+import {
+  StyleSheet,
+  Text,
+  View,
+  Image,
+  ImageBackground,
+  TouchableOpacity,
+  Alert
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import trackerApi from "../../api/tracker";
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const HomeScreen = () => {
   const navigation = useNavigation();
@@ -28,78 +37,119 @@ const HomeScreen = () => {
 
   return (
     <ImageBackground source={require('../../../assets/them.jpg')} style={styles.backgroundImage}>
-      <View style={styles.container}>
-        <Text style={styles.topic}>Welcome You !</Text>
-  
-        {/* First Rectangle */}
-        <TouchableOpacity style={[styles.rectangle, { backgroundColor: '#3498db' }]} onPress={handlePressRectangle1}>
-          <View style={styles.rectangleContent}>
-            <Text style={styles.rectangleText}>Time Table</Text>
-            <Image source={require('../../../assets/timetable.png')} style={styles.rectangleImage} />
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.topic}>Welcome!</Text>
+            <Text style={styles.subTopic}>Manage your schedules and alerts</Text>
           </View>
-        </TouchableOpacity>
-  
-        {/* Second Rectangle */}
-        <TouchableOpacity style={[styles.rectangle, { backgroundColor: '#2ecc71' }]} onPress={handlePressRectangle2}>
-          <View style={styles.rectangleContent}>
-            <Text style={styles.rectangleText}>Notifications</Text>
-            <Image source={require('../../../assets/Notification.webp')} style={styles.rectangleImage} />
+    
+          <View style={styles.menuContainer}>
+            {/* First Rectangle */}
+            <TouchableOpacity style={[styles.rectangle, { backgroundColor: '#484BF1' }]} onPress={handlePressRectangle1} activeOpacity={0.8}>
+              <View style={styles.rectangleContent}>
+                <View>
+                  <Text style={styles.rectangleText}>Time Table</Text>
+                  <Text style={styles.rectangleSubText}>View your schedule</Text>
+                </View>
+                <Image source={require('../../../assets/timetable.png')} style={styles.rectangleImage} />
+              </View>
+            </TouchableOpacity>
+      
+            {/* Second Rectangle */}
+            <TouchableOpacity style={[styles.rectangle, { backgroundColor: '#2ecc71' }]} onPress={handlePressRectangle2} activeOpacity={0.8}>
+              <View style={styles.rectangleContent}>
+                <View>
+                  <Text style={styles.rectangleText}>Notifications</Text>
+                  <Text style={styles.rectangleSubText}>Check your alerts</Text>
+                </View>
+                <Image source={require('../../../assets/Notification.webp')} style={styles.rectangleImage} />
+              </View>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-  
-        <Image source={require('../../../assets/SLTC.png')} style={styles.image} resizeMode="contain" />
-      </View>
+    
+          <View style={styles.footer}>
+            <Image source={require('../../../assets/SLTC.png')} style={styles.image} resizeMode="contain" />
+          </View>
+        </View>
+      </SafeAreaView>
     </ImageBackground>
   );
-  
 };
 
 const styles = StyleSheet.create({
-  container: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    flex: 1, // Make the container take up all available space
-    paddingTop:100
-    //paddingTop: Platform.OS === 'android' ? 150 : 100
+  backgroundImage: {
+    flex: 1,
+    resizeMode: 'cover',
   },
-  backgroundImage:{
-    flex: 1, // Make the background image cover the entire viewport
-    resizeMode: 'cover', // Stretch the image to fill the container
+  safeArea: {
+    flex: 1,
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 25,
+  },
+  header: {
+    marginTop: 40,
+    marginBottom: 40,
+  },
+  topic: {
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#2D3748',
+  },
+  subTopic: {
+    fontSize: 16,
+    color: '#718096',
+    marginTop: 5,
+    fontWeight: '500',
+  },
+  menuContainer: {
+    flex: 1,
+    justifyContent: 'flex-start',
   },
   rectangle: {
-    width: 300,
-    height: 150,
-    marginVertical: 10,
-    borderRadius: 10,
-    overflow: 'hidden', // Clip the image to the rectangle
+    width: '100%',
+    height: 140,
+    marginVertical: 12,
+    borderRadius: 24,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    overflow: 'hidden',
   },
   rectangleContent: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 50,
-    paddingTop:40
+    paddingHorizontal: 30,
   },
   rectangleImage: {
-    width: 60,
-    height: 60,
+    width: 70,
+    height: 70,
+    opacity: 0.9,
   },
   rectangleText: {
-    color: '#fff',
-    fontSize: 24,
-    fontWeight: 'bold',
+    color: '#FFFFFF',
+    fontSize: 26,
+    fontWeight: '700',
+  },
+  rectangleSubText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 14,
+    marginTop: 4,
+  },
+  footer: {
+    alignItems: 'center',
+    marginBottom: 20,
   },
   image: {
-    width: '100%', // Take full width
-    height: 120, // Set the height as needed
-    marginVertical: 20,
-    borderRadius: 10,
-  },
-  topic: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    marginTop:20
+    width: '100%',
+    height: 80,
+    opacity: 0.8,
   },
 });
 

@@ -147,7 +147,7 @@ TeacherRegister.navigationOptions = {
           width: 180
         }}
       >
-        <Text style={{ fontWeight: "bold", color: "white" }}>Sumbit</Text>
+        <Text style={{ fontWeight: "bold", color: "white" }}>Submit</Text>
       </TouchableOpacity>
     </SafeAreaView>
     </ScrollView>

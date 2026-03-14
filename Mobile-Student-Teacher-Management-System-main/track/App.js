@@ -382,6 +382,8 @@ const AdminTab = () => (
   </Tab.Navigator>
 );
 
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
 const AppNavigator = () => (
   <NavigationContainer ref={setNavigator}>
     <Stack.Navigator initialRouteName="ResolveAuth" screenOptions={{ headerShown: false }}>
@@ -394,11 +396,12 @@ const AppNavigator = () => (
   </NavigationContainer>
 );
 
-
 const App = AppNavigator;
 
 export default () => (
-  <AuthProvider>
-    <App />
-  </AuthProvider>
+  <SafeAreaProvider>
+    <AuthProvider>
+      <App />
+    </AuthProvider>
+  </SafeAreaProvider>
 );
